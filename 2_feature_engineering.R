@@ -57,9 +57,9 @@ write_csv(df_subset, "ProjectData_Processed.txt", na = "", col_names = TRUE)
 
 # check written dataset
 
-# new_df <- read_csv(
-#   file = "ProjectData_Processed.txt",
-#   col_types = list(Date = col_date(format="%Y-%m-%d"))
-# )
-# new_df
+new_df <- read_csv(
+  file = "ProjectData_Processed.txt",
+  col_types = list(Date = col_date(format="%Y-%m-%d"))
+)
+n_distinct(format(new_df$Date, "%Y"))
 
