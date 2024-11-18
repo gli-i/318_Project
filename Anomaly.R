@@ -19,43 +19,40 @@ start_date <- as.Date("2009-01-01")
 # Step 5: Filter data to only include rows starting from 2009-01-01
 test_data <- test_data %>% filter(Date >= start_date)
 
-# Step 6: Calculate the number of subsets (first 9 subsets will be 47,376 rows each)
-rows_per_subset <- 47376
-num_subsets <- 9
-total_rows <- nrow(test_data)
+# Step 6: Create subsets based on the new date ranges
 
-# Ensure there are enough rows
-if (total_rows < rows_per_subset * num_subsets) {
-  stop("The dataset is too small to fit the requested subset size of 47,376 rows per subset.")
+# Subset 1: From 2009-01-01 to 2009-01-25
+subset1 <- test_data %>% filter(Date >= as.Date("2009-01-01") & Date <= as.Date("2009-01-25"))
+
+# Subsets 2 to 9: 5 consecutive weeks (35 days) for each
+subsets_list <- list()
+start_date_next_subset <- as.Date("2009-01-26")  # The start date for the second subset
+
+for (i in 1:8) {
+  # Calculate the end date for the current 5-week period (35 days)
+  end_date <- start_date_next_subset + days(34)  # 35 days from the start date
+  # Filter the data for the current subset
+  subsets_list[[i]] <- test_data %>% filter(Date >= start_date_next_subset & Date <= end_date)
+  # Update the start date for the next subset (next 5-week period)
+  start_date_next_subset <- end_date + days(1)
 }
 
-# Step 7: Create the subset column and assign values based on row counts
-test_data$subset <- NA  # Initialize subset column
+# Subset 10: Remaining data
+remaining_data <- test_data %>% filter(Date > max(subsets_list[[8]]$Date))
 
-# For first 9 subsets (each 47,376 rows)
-for (i in 1:num_subsets) {
-  start_idx <- (i - 1) * rows_per_subset + 1
-  end_idx <- i * rows_per_subset
-  # Ensure we only assign to rows that exist
-  if (start_idx <= total_rows) {  # Only assign if the index is valid
-    end_idx <- min(end_idx, total_rows)  # Avoid exceeding total rows
-    test_data$subset[start_idx:end_idx] <- i
-  }
+# Combine all subsets into a single list
+test_data_split <- c(list(subset1), subsets_list, list(remaining_data))
+
+# Step 7: Add a 'subset' column to each subset
+for (i in 1:length(test_data_split)) {
+  test_data_split[[i]]$subset <- i
 }
 
-# For the 10th subset, assign the remaining rows
-if ((num_subsets * rows_per_subset + 1) <= total_rows) {
-  test_data$subset[(num_subsets * rows_per_subset + 1):total_rows] <- 10
-}
-
-# Step 8: Split the data into subsets based on the 'subset' column
-test_data_split <- split(test_data, test_data$subset)
-
-# Step 9: Create a directory to store CSV files (if it doesn't already exist)
+# Step 8: Create a directory to store CSV files (if it doesn't already exist)
 output_directory <- "test_data_subsets"
 dir.create(output_directory, showWarnings = FALSE)
 
-# Step 10: Write each subset to a CSV file
+# Step 9: Write each subset to a CSV file
 for (i in 1:length(test_data_split)) {
   subset_data <- test_data_split[[i]]
   
@@ -64,4 +61,3 @@ for (i in 1:length(test_data_split)) {
   write.csv(subset_data, file = file_name, row.names = FALSE)
 }
 
-# After running this, you will have 10 CSV files: subset_1.csv, subset_2.csv, ..., subset_10.csv
